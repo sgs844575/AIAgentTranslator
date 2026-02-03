@@ -1,0 +1,86 @@
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+QMainWindow {
+    background-color: #f5f7fa;
+}
+#controlFrame {
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e1e4e8;
+}
+#textFrame {
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e1e4e8;
+}
+#paramLabel {
+    font-size: 12px;
+    color: #606266;
+    font-weight: 500;
+}
+#paramValue {
+    font-size: 14px;
+    color: #409eff;
+    font-weight: 600;
+}
+#sectionLabel {
+    font-size: 14px;
+    color: #303133;
+    font-weight: 600;
+}
+QTextEdit {
+    border: none;
+    font-size: 14px;
+    padding: 10px;
+    background-color: #ffffff;
+}
+#srcTextEdit {
+    border-top: 1px solid #e1e4e8;
+}
+#transTextEdit {
+    border-top: 1px solid #e1e4e8;
+    color: #303133;
+}
+QPushButton {
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 5px 10px;
+}
+#translateBtn {
+    background-color: #409eff;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+}
+#translateBtn:hover {
+    background-color: #66b1ff;
+}
+#translateBtn:pressed {
+    background-color: #3a8ee6;
+}
+#actionBtn {
+    background-color: #67c23a;
+    color: white;
+    border: none;
+}
+#actionBtn:hover {
+    background-color: #85ce61;
+}
+#actionBtn:pressed {
+    background-color: #5daf34;
+}
+#clearBtn {
+    background-color: #f0f2f5;
+    color: #606266;
+    border: 1px solid #dcdfe6;
+}
+#clearBtn:hover {
+    background-color: #e6e9ed;
+    border-color: #c0c4cc;
+}
+#clearBtn:pressed {
+    background-color: #d7dae0;
+}

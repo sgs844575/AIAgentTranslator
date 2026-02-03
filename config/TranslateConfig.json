@@ -1,0 +1,9 @@
+{
+  "model_config": {
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4",
+    "api_key_list": [
+      "YOUR_API_KEY_HERE"
+    ]
+  }
+}

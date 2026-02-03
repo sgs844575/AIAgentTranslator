@@ -1,0 +1,52 @@
+{
+  "agents": {
+    "source_analyzer": {
+      "enabled": true,
+      "order": 1,
+      "retry_count": 2,
+      "description": "分析原文语言特征、复杂度和关键术语"
+    },
+    "translator": {
+      "enabled": true,
+      "order": 2,
+      "retry_count": 2,
+      "description": "根据分析结果进行高质量翻译"
+    },
+    "reviewer": {
+      "enabled": true,
+      "order": 3,
+      "retry_count": 2,
+      "description": "审核翻译质量，发现问题并提出建议",
+      "pass_threshold": 90,
+      "warning_threshold": 80,
+      "weights": {
+        "accuracy": 35,
+        "technical": 25,
+        "terminology": 20,
+        "language": 15,
+        "format": 5
+      },
+      "check_format_tags": true,
+      "check_placeholders": true,
+      "check_special_chars": true,
+      "check_terminology": true
+    },
+    "optimizer": {
+      "enabled": true,
+      "order": 4,
+      "retry_count": 2,
+      "description": "对翻译进行润色和优化"
+    }
+  },
+  "workflow": {
+    "enable_iteration": true,
+    "max_iterations": 3,
+    "pass_threshold": 90,
+    "auto_optimize": true
+  },
+  "ui": {
+    "show_workflow": true,
+    "show_agent_details": true,
+    "auto_scroll_details": true
+  }
+}
