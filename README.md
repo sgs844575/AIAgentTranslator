@@ -14,6 +14,7 @@
 - **迭代优化**：支持自动迭代优化，直至达到质量标准
 - **可视化界面**：直观展示工作流程和各Agent状态
 - **灵活配置**：支持自定义模型、参数和审核阈值
+- **多API支持**：支持配置多个API源，灵活切换
 
 ## 🏗️ 系统架构
 
@@ -60,8 +61,13 @@
 ### 安装依赖
 
 ```bash
-pip install PyQt5 requests
+pip install -r requirements.txt
 ```
+
+依赖包括：
+- `PyQt5>=5.15.0` - GUI框架
+- `openai>=1.0.0` - OpenAI API客户端
+- `httpx>=0.24.0` - HTTP客户端
 
 ### 配置 API
 
@@ -136,6 +142,29 @@ python Main.py
 
 支持 OpenAI、SiliconFlow 等兼容 OpenAI API 格式的服务。
 
+### 多API配置 (`config/apis.json`)
+
+支持配置多个API源，方便切换使用：
+
+```json
+{
+  "apis": [
+    {
+      "name": "OpenAI",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4",
+      "api_key": "your-key-here"
+    },
+    {
+      "name": "SiliconFlow",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "model": "Qwen/Qwen2.5-72B-Instruct",
+      "api_key": "your-key-here"
+    }
+  ]
+}
+```
+
 ### Agent配置 (`config/agents_config.json`)
 
 ```json
@@ -162,30 +191,46 @@ python Main.py
 ## 📁 项目结构
 
 ```
-TranslateToolsUi/
+AIAgentTranslator/
 ├── agents/                     # Agent专家模块
+│   ├── __init__.py
 │   ├── base_agent.py          # 基础Agent类
 │   ├── source_analyzer.py     # 原语言分析专家
 │   ├── translator.py          # 翻译专家
 │   ├── reviewer.py            # 翻译审核专家
 │   └── optimizer.py           # 翻译优化专家
 ├── core/                       # 核心模块
+│   ├── __init__.py
 │   ├── agent_orchestrator.py  # Agent协调器
 │   └── translation_pipeline.py # 翻译流程管理
 ├── gui/                        # GUI界面模块
+│   ├── __init__.py
 │   ├── main_window.py         # 主窗口
 │   ├── agent_panel.py         # Agent状态面板
+│   ├── settings_window.py     # 设置窗口
 │   └── workflow_visualizer.py # 工作流可视化
 ├── models/                     # 数据模型
+│   ├── __init__.py
 │   ├── agent_result.py        # Agent结果模型
 │   └── translation_context.py # 翻译上下文
 ├── clinet/                     # LLM客户端
 │   └── LLMClient.py
+├── utils/                      # 工具函数
+│   ├── FileUtils.py
+│   ├── StringUtils.py
+│   ├── CompareUtils.py
+│   └── SingleIndentEncoder.py
 ├── config/                     # 配置文件
 │   ├── TranslateConfig.json   # 翻译配置
-│   └── agents_config.json     # Agent配置
+│   ├── agents_config.json     # Agent配置
+│   └── apis.json              # 多API配置
+├── style/                      # 样式文件
+│   ├── main.style
+│   └── slider.style
 ├── Main.py                     # 入口文件
 ├── run.py                      # 启动脚本
+├── requirements.txt            # 依赖列表
+├── LICENSE                     # 许可证
 └── README.md                   # 项目说明
 ```
 
