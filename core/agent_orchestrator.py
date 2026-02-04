@@ -724,10 +724,11 @@ class AgentOrchestrator:
     
     def reset(self):
         """重置协调器状态"""
+        # 重置停止标志（必须在重新初始化Agent之前）
+        self._stop_requested = False
         # 重新初始化所有Agent
         self.agents.clear()
         self.agent_configs.clear()
-        self._stop_requested = False
         self._init_agents()
     
     def request_stop(self):

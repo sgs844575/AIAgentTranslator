@@ -85,6 +85,9 @@ class TranslationPipeline:
             max_iterations=options.max_iterations
         )
         
+        # 重置停止标志，确保新任务不受之前取消操作的影响
+        self.reset()
+        
         # 注册回调（先清空旧回调，防止重复注册）
         self.orchestrator.clear_progress_callbacks()
         if progress_callback:
