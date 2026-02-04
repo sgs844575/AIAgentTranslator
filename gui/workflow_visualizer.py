@@ -258,8 +258,8 @@ class WorkflowScene(QGraphicsScene):
                 self.addItem(edge)
                 self.edges.append(edge)
         
-        # 设置场景大小（增加宽度以容纳右侧返回路径）
-        self.setSceneRect(0, 0, 320, 470)
+        # 设置场景大小（适配右侧面板）
+        self.setSceneRect(0, 0, 300, 470)
     
     def update_node_status(self, node_key: str, status: AgentStatus):
         """更新节点状态"""
@@ -337,8 +337,8 @@ class WorkflowVisualizer(QFrame):
     def setup_ui(self):
         """设置UI"""
         self.setFrameStyle(QFrame.StyledPanel)
-        self.setMinimumWidth(350)
-        self.setMaximumWidth(400)
+        self.setMinimumWidth(280)
+        self.setMaximumWidth(500)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)

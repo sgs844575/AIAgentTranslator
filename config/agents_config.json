@@ -17,8 +17,13 @@
       "order": 3,
       "retry_count": 2,
       "description": "审核翻译质量，发现问题并提出建议",
-      "pass_threshold": 90,
-      "warning_threshold": 80,
+      "thresholds": {
+        "skip_optimization": 95,
+        "enter_optimization_min": 70,
+        "enter_optimization_max": 95,
+        "retranslate_min": 0,
+        "retranslate_max": 69
+      },
       "weights": {
         "accuracy": 35,
         "technical": 25,
@@ -41,7 +46,6 @@
   "workflow": {
     "enable_iteration": true,
     "max_iterations": 3,
-    "pass_threshold": 90,
     "auto_optimize": true
   },
   "ui": {

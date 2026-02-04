@@ -324,6 +324,12 @@ class AgentOrchestrator:
         
         # 完成前检查停止请求
         self._check_stop_requested()
+        # 清理临时属性
+        if hasattr(context, '_saved_review1_result'):
+            delattr(context, '_saved_review1_result')
+        if hasattr(context, '_fix_mode'):
+            delattr(context, '_fix_mode')
+        
         context.complete()
         
         # 输出阶段完成
@@ -451,46 +457,42 @@ class AgentOrchestrator:
                         current_stage = 'optimizer'
                         continue
                 
-                # 审核未通过，判断问题严重程度
-                logger.info(f"译后审核未通过（评分: {score}，严重程度: {severity}）")
+                # 审核未通过，优先尝试让优化专家修复（无论分数和迭代次数）
+                logger.info(f"译后审核未通过（评分: {score}），尝试让优化专家修复")
                 
-                # 检查是否达到最大迭代次数
-                if iteration == max_iterations - 1:
-                    logger.warning("已达最大迭代次数且审核未通过，流程结束")
-                    break
+                # 无论分数如何，优先尝试让优化专家修复
+                self._notify_progress('flow_control', 'smart_routing', {
+                    'from': 'reviewer',
+                    'to': 'optimizer',
+                    'mode': 'fix_mode',
+                    'reason': f'审核评分{score}分，尝试优化修复'
+                })
                 
-                if severity == 'minor':
-                    # 小问题(80-89分)：尝试让优化专家修复
-                    logger.info("问题较小，尝试让优化专家修复")
-                    self._notify_progress('flow_control', 'smart_routing', {
-                        'from': 'reviewer',
-                        'to': 'optimizer',
-                        'mode': 'fix_mode',
-                        'reason': f'审核评分{score}分，问题较小，尝试优化修复而非重新翻译'
-                    })
-                    
-                    # 进入修复模式
-                    fix_result = self._execute_fix_mode(context, review_result)
-                    
-                    if fix_result:
-                        # 修复成功，进入优化阶段（正常润色）
-                        current_stage = 'optimizer'
-                        continue
-                    else:
-                        # 修复失败，返回翻译阶段
-                        logger.info("优化专家修复未能解决问题，返回翻译专家")
+                # 进入修复模式
+                fix_result = self._execute_fix_mode(context, review_result)
+                
+                if fix_result:
+                    # 修复成功且审核通过，进入优化阶段（正常润色）
+                    logger.info("修复模式审核通过，进入正常优化阶段")
+                    current_stage = 'optimizer'
+                    continue
+                else:
+                    # 修复失败或修复后审核未通过
+                    if iteration < max_iterations - 1:
+                        # 还有迭代次数，返回翻译阶段重新翻译
+                        logger.info("优化专家修复未能解决问题，返回翻译专家重新翻译")
+                        self._notify_progress('flow_control', 'return_to_agent', {
+                            'from': 'reviewer',
+                            'to': 'translator',
+                            'reason': f'优化专家修复后审核仍未通过（评分{score}），需要重新翻译'
+                        })
                         current_stage = 'translator'
                         continue
-                else:
-                    # 大问题(<80分)：返回翻译专家重新翻译
-                    logger.info("问题严重，返回翻译专家重新翻译")
-                    self._notify_progress('flow_control', 'return_to_agent', {
-                        'from': 'reviewer',
-                        'to': 'translator',
-                        'reason': f'译后审核未通过（评分{score}），问题较严重，需要重新翻译。原因：{self._get_review_failure_reason(review_result)}'
-                    })
-                    current_stage = 'translator'
-                    continue
+                    else:
+                        # 最后一轮迭代，即使修复失败也进入优化阶段尝试最终润色
+                        logger.warning("已达最大迭代次数且修复失败，进入最终优化阶段")
+                        current_stage = 'optimizer'
+                        continue
             
             # ========== 阶段2: 优化（正常润色） ==========
             elif current_stage == 'optimizer':
@@ -510,6 +512,9 @@ class AgentOrchestrator:
                 context.update_stage('reviewer2')
                 self._notify_progress('reviewer2', 'started', {'message': '优化后进行完整审核'})
                 
+                # 保存第一次审核结果，供后续恢复使用
+                context._saved_review1_result = context.review_result
+                
                 review2_result = self._perform_post_opt_review(context)
                 
                 if review2_result is None:
@@ -526,6 +531,10 @@ class AgentOrchestrator:
                         'score': score2,
                         'message': '优化后审核通过'
                     })
+                    # 审核通过，恢复第一次审核结果（保留原始审核记录）
+                    if hasattr(context, '_saved_review1_result') and context._saved_review1_result:
+                        context.review_result = context._saved_review1_result
+                        delattr(context, '_saved_review1_result')
                     break
                 else:
                     # 审核未通过
@@ -542,13 +551,10 @@ class AgentOrchestrator:
                         break
                     
                     # 返回优化阶段继续优化
-                    # 将第二次审核结果的问题传递给优化专家，以便针对性修复
+                    # 此时 review_result 已经是第二次审核结果（由 _perform_post_opt_review 设置）
+                    # 优化专家会基于这些最新问题进行针对性优化
                     if review2_result and hasattr(review2_result, 'issues'):
-                        # 临时保存第一次审核结果
-                        context._saved_review1_result = context.review_result
-                        # 使用第二次审核结果作为当前审核结果，让优化专家基于最新反馈优化
-                        context.review_result = review2_result
-                        logger.info(f"将第二次审核的{len(review2_result.issues)}个问题传递给优化专家")
+                        logger.info(f"将第二次审核的{len(review2_result.issues)}个问题传递给优化专家继续优化")
                     
                     logger.info("返回优化阶段继续优化")
                     self._notify_progress('flow_control', 'return_to_agent', {
@@ -558,6 +564,12 @@ class AgentOrchestrator:
                     })
                     current_stage = 'optimizer'
                     continue
+        
+        # 清理临时属性
+        if hasattr(context, '_saved_review1_result'):
+            delattr(context, '_saved_review1_result')
+        if hasattr(context, '_fix_mode'):
+            delattr(context, '_fix_mode')
         
         context.complete()
         
@@ -667,10 +679,12 @@ class AgentOrchestrator:
         # 执行审核（使用'reviewer2'作为stage_key以区分第一次审核）
         review_result = self.execute_single('reviewer', context, stage_key='reviewer2')
         
-        # 恢复第一次审核结果，将第二次审核结果存储到review2_result
-        context.review_result = saved_review1_result
+        # 将第二次审核结果存储到review2_result
         if review_result:
             context.review2_result = review_result
+        
+        # 注意：此处不立即恢复第一次审核结果
+        # 如果审核通过，由调用方恢复；如果未通过，保留第二次结果供优化专家使用
         
         return review_result
     

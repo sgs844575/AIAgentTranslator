@@ -22,6 +22,53 @@ class AgentDetailDialog(QDialog):
         self.setWindowTitle(f"{agent_name} - 执行详情")
         self.setMinimumSize(500, 400)
         
+        # 设置白色背景样式
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+            QLabel {
+                color: #333333;
+                background-color: transparent;
+            }
+            QGroupBox {
+                color: #333333;
+                background-color: #F5F5F5;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 12px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+            QTextEdit {
+                background-color: white;
+                color: #333333;
+                border: 1px solid #E0E0E0;
+                border-radius: 6px;
+                padding: 8px;
+                font-size: 13px;
+            }
+            QPushButton {
+                background-color: #1976D2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-size: 13px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #1565C0;
+            }
+        """)
+        
         self.setup_ui()
     
     def setup_ui(self):
@@ -113,30 +160,31 @@ class AgentStatusCard(QFrame):
     def setup_ui(self):
         """设置UI"""
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        self.setLineWidth(2)
+        self.setLineWidth(1)
         
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(4)
+        layout.setContentsMargins(10, 8, 10, 8)
         
         # 标题区域
         header_layout = QHBoxLayout()
+        header_layout.setSpacing(8)
         
         self.name_label = QLabel(f"<b>{self.agent_name}</b>")
-        self.name_label.setStyleSheet("font-size: 14px;")
+        self.name_label.setStyleSheet("font-size: 13px;")
         header_layout.addWidget(self.name_label)
         
         header_layout.addStretch()
         
         self.status_label = QLabel("等待中")
-        self.status_label.setStyleSheet("font-size: 12px; color: #666;")
+        self.status_label.setStyleSheet("font-size: 11px; color: #666;")
         header_layout.addWidget(self.status_label)
         
         layout.addLayout(header_layout)
         
         # 描述
         self.desc_label = QLabel(self.agent_description)
-        self.desc_label.setStyleSheet("font-size: 11px; color: #888;")
+        self.desc_label.setStyleSheet("font-size: 10px; color: #888;")
         self.desc_label.setWordWrap(True)
         layout.addWidget(self.desc_label)
         
@@ -144,32 +192,47 @@ class AgentStatusCard(QFrame):
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)  # 无限进度
         self.progress_bar.setVisible(False)
+        self.progress_bar.setMaximumHeight(4)
         layout.addWidget(self.progress_bar)
+        
+        # 简略结果显示区域
+        self.result_summary = QLabel("")
+        self.result_summary.setStyleSheet("""
+            font-size: 11px; 
+            color: #3C3C43; 
+            background-color: rgba(0, 122, 255, 0.08);
+            border-radius: 6px;
+            padding: 6px 8px;
+        """)
+        self.result_summary.setWordWrap(True)
+        self.result_summary.setVisible(False)
+        layout.addWidget(self.result_summary)
         
         # 底部区域：状态摘要 + 详情按钮
         bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(8)
         
-        # 简洁状态显示
-        self.summary_label = QLabel("")
-        self.summary_label.setStyleSheet("font-size: 11px; color: #666;")
-        self.summary_label.setVisible(False)
-        bottom_layout.addWidget(self.summary_label)
+        # 执行统计（耗时、次数）
+        self.stats_label = QLabel("")
+        self.stats_label.setStyleSheet("font-size: 10px; color: #86868B;")
+        self.stats_label.setVisible(False)
+        bottom_layout.addWidget(self.stats_label)
         
         bottom_layout.addStretch()
         
         # 查看详情按钮
-        self.detail_btn = QPushButton("查看详情")
-        self.detail_btn.setFixedSize(80, 26)
+        self.detail_btn = QPushButton("详情")
+        self.detail_btn.setFixedSize(50, 22)
         self.detail_btn.setStyleSheet("""
             QPushButton {
-                font-size: 11px;
-                background-color: #2196F3;
+                font-size: 10px;
+                background-color: #007AFF;
                 color: white;
                 border-radius: 4px;
                 border: none;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background-color: #0056CC;
             }
             QPushButton:disabled {
                 background-color: #BDBDBD;
@@ -222,25 +285,95 @@ class AgentStatusCard(QFrame):
         # 控制进度条显示
         self.progress_bar.setVisible(status == AgentStatus.RUNNING)
     
+    def _extract_summary(self, result: AgentResult) -> str:
+        """从结果中提取简略信息"""
+        if result.status == AgentStatus.FAILED:
+            return "执行失败"
+        if result.status == AgentStatus.SKIPPED:
+            return "已跳过"
+        
+        parts = []
+        
+        # 根据Agent类型提取不同信息
+        agent_name = result.agent_name.lower()
+        details = result.details or {}
+        
+        if 'analyzer' in agent_name or 'analysis' in agent_name:
+            # 原语言分析专家
+            lang = details.get('language', '')
+            complexity = details.get('complexity', '')
+            if lang:
+                parts.append(f"语言: {lang}")
+            if complexity:
+                parts.append(f"复杂度: {complexity}")
+            key_terms = details.get('key_terms', [])
+            if key_terms:
+                terms_str = ', '.join(key_terms[:3])
+                if len(key_terms) > 3:
+                    terms_str += f' 等{len(key_terms)}个'
+                parts.append(f"术语: {terms_str}")
+                
+        elif 'translator' in agent_name and 'optimizer' not in agent_name:
+            # 翻译专家
+            confidence = details.get('confidence', 0)
+            if confidence:
+                parts.append(f"置信度: {confidence:.0%}")
+            notes = details.get('notes', [])
+            if notes:
+                parts.append(f"备注: {notes[0]}")
+                
+        elif 'reviewer' in agent_name or 'review' in agent_name:
+            # 翻译审核专家
+            score = getattr(result, 'score', 0) or details.get('score', 0)
+            passed = getattr(result, 'passed', False) or details.get('passed', False)
+            if score:
+                status = "通过" if passed else "未通过"
+                parts.append(f"评分: {score}/100 ({status})")
+            issues = details.get('issues', [])
+            if issues:
+                parts.append(f"问题: {len(issues)}个")
+            suggestions = details.get('suggestions', [])
+            if suggestions:
+                parts.append(f"建议: {suggestions[0][:30]}..." if len(suggestions[0]) > 30 else f"建议: {suggestions[0]}")
+                
+        elif 'optimizer' in agent_name:
+            # 翻译优化专家
+            improvements = details.get('improvements', [])
+            if improvements:
+                parts.append(f"改进: {len(improvements)}处")
+            polish_type = details.get('polish_type', '')
+            if polish_type:
+                parts.append(f"类型: {polish_type}")
+        
+        # 如果没有提取到特定信息，使用output前50字
+        if not parts and result.output:
+            text = result.output.replace('\n', ' ').strip()
+            if len(text) > 50:
+                return f"结果: {text[:50]}..."
+            else:
+                return f"结果: {text}"
+        
+        return " | ".join(parts) if parts else "已完成"
+    
     def set_result(self, result: AgentResult):
         """设置执行结果"""
         self.current_result = result
         
-        # 简洁显示
-        summary_parts = []
+        # 显示简略结果
+        summary = self._extract_summary(result)
+        self.result_summary.setText(summary)
+        self.result_summary.setVisible(True)
         
-        if 'execution_count' in result.metadata and result.metadata['execution_count'] > 1:
-            summary_parts.append(f"执行 {result.metadata['execution_count']} 次")
-        
+        # 执行统计
+        stats_parts = []
+        if result.metadata.get('execution_count', 1) > 1:
+            stats_parts.append(f"执行 {result.metadata['execution_count']} 次")
         if 'execution_time' in result.metadata:
-            summary_parts.append(f"耗时 {result.metadata['execution_time']:.1f}s")
+            stats_parts.append(f"耗时 {result.metadata['execution_time']:.1f}s")
         
-        if hasattr(result, 'score'):
-            summary_parts.append(f"评分 {result.score}")
-        
-        if summary_parts:
-            self.summary_label.setText(" | ".join(summary_parts))
-            self.summary_label.setVisible(True)
+        if stats_parts:
+            self.stats_label.setText(" | ".join(stats_parts))
+            self.stats_label.setVisible(True)
         
         # 显示详情按钮
         self.detail_btn.setVisible(True)
@@ -256,8 +389,10 @@ class AgentStatusCard(QFrame):
     def reset(self):
         """重置状态"""
         self.update_status(AgentStatus.PENDING)
-        self.summary_label.clear()
-        self.summary_label.setVisible(False)
+        self.result_summary.clear()
+        self.result_summary.setVisible(False)
+        self.stats_label.clear()
+        self.stats_label.setVisible(False)
         self.detail_btn.setVisible(False)
         self.current_result = None
 
@@ -285,21 +420,16 @@ class AgentPanel(QWidget):
     def setup_ui(self):
         """设置UI"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        layout.setContentsMargins(4, 4, 4, 4)
         
-        # 标题
-        title = QLabel("<h3>🤖 AI Agent 翻译团队</h3>")
-        title.setStyleSheet("color: #333; margin-bottom: 10px;")
-        layout.addWidget(title)
-        
-        # 创建Agent卡片
+        # 创建Agent卡片（移除大标题，使用更紧凑的布局）
         for agent_key, name, desc in self.agent_info:
             card = AgentStatusCard(name, desc)
             self.agent_cards[agent_key] = card
             layout.addWidget(card)
         
-        layout.addStretch()
+        layout.addStretch(0)
     
     def update_agent_status(self, agent_key: str, status: AgentStatus, message: str = ""):
         """更新指定Agent的状态"""
