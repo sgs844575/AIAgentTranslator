@@ -542,6 +542,14 @@ class AgentOrchestrator:
                         break
                     
                     # 返回优化阶段继续优化
+                    # 将第二次审核结果的问题传递给优化专家，以便针对性修复
+                    if review2_result and hasattr(review2_result, 'issues'):
+                        # 临时保存第一次审核结果
+                        context._saved_review1_result = context.review_result
+                        # 使用第二次审核结果作为当前审核结果，让优化专家基于最新反馈优化
+                        context.review_result = review2_result
+                        logger.info(f"将第二次审核的{len(review2_result.issues)}个问题传递给优化专家")
+                    
                     logger.info("返回优化阶段继续优化")
                     self._notify_progress('flow_control', 'return_to_agent', {
                         'from': 'reviewer2',

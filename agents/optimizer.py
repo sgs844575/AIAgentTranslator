@@ -192,6 +192,12 @@ class Optimizer(BaseAgent):
         )
         
         context.optimization_result = result
+        
+        # 将优化结果同步到 translation_result，确保后续审核拿到的是优化后的译文
+        if context.translation_result:
+            context.translation_result.output = optimized
+            context.translation_result.translation = optimized
+        
         return result
     
     def _extract_optimized(self, response: str, is_fix_mode: bool = False) -> str:
