@@ -642,9 +642,9 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1400, 900)
         self.resize(1600, 1000)
         
-        # 加载配置
-        self.config = FileUtils.read_json_file('config/TranslateConfig.json')
-        self.agents_config = FileUtils.read_json_file('config/agents_config.json')
+        # 加载配置（优先使用 apis.json，兼容 TranslateConfig.json）
+        self.config = self._load_config()
+        self.agents_config = self._load_agents_config()
         self.config['agents_config'] = self.agents_config.get('agents', {})
         
         # 创建翻译流程
@@ -840,6 +840,149 @@ class MainWindow(QMainWindow):
         
         # 默认选中快速开始
         self.sidebar.set_selected("quick_start")
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """
+        加载配置（兼容新旧配置格式）
+        
+        优先使用 apis.json，如果不存在则创建默认配置
+        """
+        import os
+        
+        apis_file = 'config/apis.json'
+        
+        # 首先尝试加载新的 apis.json
+        try:
+            apis_config = FileUtils.read_json_file(apis_file)
+            if apis_config and len(apis_config) > 0:
+                # 找到第一个启用的 API 配置
+                for api_id, api_info in apis_config.items():
+                    if isinstance(api_info, dict) and api_info.get('enabled', True):
+                        return self._convert_api_to_model_config(api_info)
+                # 如果没有启用的，使用第一个
+                first_api = list(apis_config.values())[0]
+                if isinstance(first_api, dict):
+                    return self._convert_api_to_model_config(first_api)
+        except FileNotFoundError:
+            logging.info("apis.json 不存在，将创建默认配置")
+        except Exception as e:
+            logging.warning(f"加载 apis.json 失败: {e}")
+        
+        # apis.json 不存在或为空，创建默认配置
+        default_apis_config = {
+            "siliconflow": {
+                "name": "SiliconFlow",
+                "icon": "⚡",
+                "base_url": "https://api.siliconflow.cn/v1",
+                "model": "deepseek-ai/DeepSeek-V3",
+                "api_key": "",
+                "enabled": True
+            }
+        }
+        
+        try:
+            # 确保 config 目录存在
+            os.makedirs('config', exist_ok=True)
+            # 创建默认 apis.json
+            with open(apis_file, 'w', encoding='utf-8') as f:
+                json.dump(default_apis_config, f, ensure_ascii=False, indent=2)
+            logging.info(f"已创建默认配置: {apis_file}")
+            # 使用默认配置
+            return self._convert_api_to_model_config(default_apis_config["siliconflow"])
+        except Exception as e:
+            logging.error(f"创建默认配置失败: {e}")
+        
+        # 回退到旧的 TranslateConfig.json（兼容旧版本）
+        try:
+            old_config = FileUtils.read_json_file('config/TranslateConfig.json')
+            if old_config and old_config.get('model_config'):
+                logging.info("使用 TranslateConfig.json 配置")
+                return old_config
+        except Exception:
+            pass
+        
+        # 返回空配置
+        logging.error("无法加载任何有效配置，请检查 config/apis.json 或 config/TranslateConfig.json")
+        return {'model_config': {}}
+    
+    def _convert_api_to_model_config(self, api_info: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        将 apis.json 格式转换为 model_config 格式（兼容 base_agent.py）
+        
+        Args:
+            api_info: API 配置信息
+            
+        Returns:
+            转换后的配置字典
+        """
+        return {
+            'model_config': {
+                'base_url': api_info.get('base_url', ''),
+                'model': api_info.get('model', ''),
+                'api_key_list': [api_info.get('api_key', '')] if api_info.get('api_key') else []
+            }
+        }
+    
+    def _load_agents_config(self) -> Dict[str, Any]:
+        """
+        加载 Agent 配置（agents_config.json）
+        
+        如果文件不存在则创建默认配置
+        
+        Returns:
+            Agent 配置字典
+        """
+        import os
+        
+        config_file = 'config/agents_config.json'
+        
+        # 尝试加载现有配置
+        try:
+            config = FileUtils.read_json_file(config_file)
+            if config:
+                return config
+        except FileNotFoundError:
+            logging.info(f"{config_file} 不存在，将创建默认配置")
+        except Exception as e:
+            logging.warning(f"加载 {config_file} 失败: {e}")
+        
+        # 创建默认配置
+        default_config = {
+            "agents": {
+                "reviewer": {
+                    "pass_threshold": 80,
+                    "weights": {
+                        "accuracy": 35,
+                        "technical": 25,
+                        "terminology": 20,
+                        "language": 15,
+                        "format": 5
+                    },
+                    "thresholds": {
+                        "skip_optimization": 95,
+                        "enter_optimization_min": 70,
+                        "enter_optimization_max": 94,
+                        "retranslate_max": 69
+                    }
+                }
+            },
+            "workflow": {
+                "enable_iteration": True,
+                "max_iterations": 3
+            }
+        }
+        
+        try:
+            # 确保 config 目录存在
+            os.makedirs('config', exist_ok=True)
+            # 创建默认配置文件
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, ensure_ascii=False, indent=2)
+            logging.info(f"已创建默认配置: {config_file}")
+        except Exception as e:
+            logging.error(f"创建默认配置失败: {e}")
+        
+        return default_config
     
     def connect_signals(self):
         """连接信号"""

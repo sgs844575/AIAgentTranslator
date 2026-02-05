@@ -71,17 +71,30 @@ pip install -r requirements.txt
 
 ### 配置 API
 
-编辑 `config/TranslateConfig.json`：
+编辑 `config/apis.json` 配置API接口：
 
 ```json
 {
-  "model_config": {
+  "openai": {
+    "name": "OpenAI",
+    "icon": "🤖",
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4",
-    "api_key_list": ["your-api-key-here"]
+    "api_key": "your-api-key-here",
+    "enabled": true
+  },
+  "siliconflow": {
+    "name": "SiliconFlow",
+    "icon": "⚡",
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "deepseek-ai/DeepSeek-V3",
+    "api_key": "your-api-key-here",
+    "enabled": true
   }
 }
 ```
+
+> **注意**：`config/TranslateConfig.json` 已弃用，请使用 `config/apis.json` 进行多API管理。
 
 ### 启动应用
 
@@ -128,19 +141,33 @@ python Main.py
 
 ## ⚙️ 配置说明
 
-### 模型配置 (`config/TranslateConfig.json`)
+### 多API配置 (`config/apis.json`)
+
+新版配置支持管理多个API源，每个API使用唯一标识符作为键：
 
 ```json
 {
-  "model_config": {
+  "api_id": {
+    "name": "显示名称",
+    "icon": "图标emoji",
     "base_url": "API基础地址",
     "model": "模型名称",
-    "api_key_list": ["API密钥列表"]
+    "api_key": "API密钥",
+    "enabled": true
   }
 }
 ```
 
-支持 OpenAI、SiliconFlow 等兼容 OpenAI API 格式的服务。
+| 字段 | 说明 |
+|------|------|
+| `name` | API显示名称 |
+| `icon` | 图标（emoji） |
+| `base_url` | API基础URL |
+| `model` | 模型名称 |
+| `api_key` | API密钥 |
+| `enabled` | 是否启用 |
+
+支持 OpenAI、SiliconFlow、DeepSeek 等兼容 OpenAI API 格式的服务。
 
 ### 多API配置 (`config/apis.json`)
 
@@ -153,12 +180,6 @@ python Main.py
       "name": "OpenAI",
       "base_url": "https://api.openai.com/v1",
       "model": "gpt-4",
-      "api_key": "your-key-here"
-    },
-    {
-      "name": "SiliconFlow",
-      "base_url": "https://api.siliconflow.cn/v1",
-      "model": "Qwen/Qwen2.5-72B-Instruct",
       "api_key": "your-key-here"
     }
   ]
@@ -221,9 +242,9 @@ AIAgentTranslator/
 │   ├── CompareUtils.py
 │   └── SingleIndentEncoder.py
 ├── config/                     # 配置文件
-│   ├── TranslateConfig.json   # 翻译配置
+│   ├── apis.json              # 多API配置（推荐）
 │   ├── agents_config.json     # Agent配置
-│   └── apis.json              # 多API配置
+│   └── TranslateConfig.json   # 翻译配置（已弃用，仅兼容）
 ├── style/                      # 样式文件
 │   ├── main.style
 │   └── slider.style

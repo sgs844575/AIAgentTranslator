@@ -42,13 +42,58 @@ class TranslationSettingsPage(AnimatedPage):
         self.setup_ui()
     
     def load_config(self):
-        """加载配置"""
+        """加载配置（如果不存在则创建默认配置）"""
+        import os
+        
+        config_file = 'config/agents_config.json'
+        
+        # 尝试加载现有配置
         try:
-            with open('config/agents_config.json', 'r', encoding='utf-8') as f:
+            with open(config_file, 'r', encoding='utf-8') as f:
                 self.config = json.load(f)
+                return
+        except FileNotFoundError:
+            logger.info(f"{config_file} 不存在，将创建默认配置")
         except Exception as e:
             logger.warning(f"加载配置失败: {e}")
-            self.config = {"workflow": {"enable_iteration": True, "max_iterations": 3}}
+        
+        # 创建默认配置
+        default_config = {
+            "agents": {
+                "reviewer": {
+                    "pass_threshold": 80,
+                    "weights": {
+                        "accuracy": 35,
+                        "technical": 25,
+                        "terminology": 20,
+                        "language": 15,
+                        "format": 5
+                    },
+                    "thresholds": {
+                        "skip_optimization": 95,
+                        "enter_optimization_min": 70,
+                        "enter_optimization_max": 94,
+                        "retranslate_max": 69
+                    }
+                }
+            },
+            "workflow": {
+                "enable_iteration": True,
+                "max_iterations": 3
+            }
+        }
+        
+        try:
+            # 确保 config 目录存在
+            os.makedirs('config', exist_ok=True)
+            # 创建默认配置文件
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, ensure_ascii=False, indent=2)
+            logger.info(f"已创建默认配置: {config_file}")
+        except Exception as e:
+            logger.error(f"创建默认配置失败: {e}")
+        
+        self.config = default_config
     
     def setup_ui(self):
         """设置现代化UI"""

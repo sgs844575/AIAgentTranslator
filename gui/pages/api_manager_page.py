@@ -45,22 +45,44 @@ class ApiManagerPage(AnimatedPage):
         self.setup_ui()
     
     def load_apis(self):
-        """加载API配置"""
+        """加载API配置（如果不存在则创建默认配置）"""
+        import os
+        
+        config_file = 'config/apis.json'
+        
+        # 尝试加载现有配置
         try:
-            with open('config/apis.json', 'r', encoding='utf-8') as f:
+            with open(config_file, 'r', encoding='utf-8') as f:
                 self.apis = json.load(f)
+                return
+        except FileNotFoundError:
+            logger.info(f"{config_file} 不存在，将创建默认配置")
         except Exception as e:
             logger.warning(f"加载API配置失败: {e}")
-            self.apis = {
-                "deepseek": {
-                    "name": "DeepSeek",
-                    "icon": "🔷",
-                    "base_url": "https://api.siliconflow.cn/v1",
-                    "model": "deepseek-ai/DeepSeek-V3",
-                    "api_key": "",
-                    "enabled": True
-                }
+        
+        # 创建默认配置
+        default_apis = {
+            "siliconflow": {
+                "name": "SiliconFlow",
+                "icon": "⚡",
+                "base_url": "https://api.siliconflow.cn/v1",
+                "model": "deepseek-ai/DeepSeek-V3",
+                "api_key": "",
+                "enabled": True
             }
+        }
+        
+        try:
+            # 确保 config 目录存在
+            os.makedirs('config', exist_ok=True)
+            # 创建默认配置文件
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(default_apis, f, ensure_ascii=False, indent=2)
+            logger.info(f"已创建默认配置: {config_file}")
+        except Exception as e:
+            logger.error(f"创建默认配置失败: {e}")
+        
+        self.apis = default_apis
     
     def save_apis(self):
         """保存API配置"""

@@ -901,12 +901,16 @@ class TranslationSettingsPage(QWidget):
         self.retrans_max.valueChanged.connect(self._update_range_hint)
     
     def load_config(self):
-        """加载配置"""
+        """加载配置（如果不存在则创建默认配置）"""
+        import os
+        
         self._is_loading = True
         try:
             config = FileUtils.read_json(self.CONFIG_FILE)
             if not config:
-                config = {}
+                # 配置文件不存在，创建默认配置
+                logger.info(f"{self.CONFIG_FILE} 不存在或为空，将创建默认配置")
+                config = self._create_default_config()
             
             reviewer_config = config.get("agents", {}).get("reviewer", {})
             thresholds = reviewer_config.get("thresholds", {})
@@ -922,6 +926,47 @@ class TranslationSettingsPage(QWidget):
             logger.error(f"加载配置失败: {e}")
         finally:
             self._is_loading = False
+    
+    def _create_default_config(self):
+        """创建默认配置并保存到文件"""
+        import os
+        
+        default_config = {
+            "agents": {
+                "reviewer": {
+                    "pass_threshold": 80,
+                    "weights": {
+                        "accuracy": 35,
+                        "technical": 25,
+                        "terminology": 20,
+                        "language": 15,
+                        "format": 5
+                    },
+                    "thresholds": {
+                        "skip_optimization": 95,
+                        "enter_optimization_min": 70,
+                        "enter_optimization_max": 94,
+                        "retranslate_max": 69
+                    }
+                }
+            },
+            "workflow": {
+                "enable_iteration": True,
+                "max_iterations": 3
+            }
+        }
+        
+        try:
+            # 确保 config 目录存在
+            os.makedirs('config', exist_ok=True)
+            # 创建默认配置文件
+            with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, ensure_ascii=False, indent=2)
+            logger.info(f"已创建默认配置: {self.CONFIG_FILE}")
+        except Exception as e:
+            logger.error(f"创建默认配置失败: {e}")
+        
+        return default_config
     
     def _update_range_hint(self):
         """更新范围提示"""
