@@ -158,6 +158,30 @@ class ReviewerConfigPage(AnimatedPage):
     
     def setup_ui(self):
         """设置现代化UI"""
+        # 设置 QMessageBox 样式，防止弹窗变黑
+        self.setStyleSheet("""
+            /* QMessageBox 弹窗样式 */
+            QMessageBox {
+                background-color: white;
+            }
+            QMessageBox QLabel {
+                color: #1D1D1F;
+                background-color: transparent;
+            }
+            QMessageBox QPushButton {
+                background-color: #007AFF;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+                min-width: 80px;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #0056CC;
+            }
+        """)
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
